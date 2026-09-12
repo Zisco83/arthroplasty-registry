@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arthroplasty Registry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --teal:#1C6B6B;
+    --teal-dark:#124B4B;
+    --navy:#1F3A5F;
+    --bg:#F4F6F5;
+    --surface:#FFFFFF;
+    --border:#DCE2E1;
+    --text:#16211F;
+    --text-soft:#5B6866;
+    --success:#2F7A55;
+    --success-bg:#E7F2EC;
+    --warn:#B8863E;
+    --warn-bg:#FBF1E1;
+    --danger:#A6402F;
+    --danger-bg:#FBEAE6;
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{font-family:var(--sans); background:var(--bg); color:var(--text); font-size:14px; line-height:1.5;}
+  h1,h2,h3,h4{font-family:var(--sans); font-weight:600; margin:0;}
+  button{font-family:var(--sans); cursor:pointer;}
+  input,select,textarea{font-family:var(--sans); font-size:13.5px;}
+  #app{min-height:100vh;}
+
+  #loginScreen{min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,#F4F6F5 0%, #E7EDEC 100%);}
+  .login-card{width:380px; background:var(--surface); border:1px solid var(--border); padding:36px 32px; border-radius:4px;}
+  .login-mark{width:40px;height:40px;border-radius:8px;background:var(--teal); display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700; font-size:15px; margin-bottom:18px;}
+  .login-card h1{font-size:20px; margin-bottom:4px;}
+  .login-sub{color:var(--text-soft); font-size:13px; margin-bottom:24px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12.5px; color:var(--text-soft); margin-bottom:5px; font-weight:500;}
+  .field input, .field select, .field textarea{width:100%; padding:9px 10px; border:1px solid var(--border); border-radius:4px; background:#fff; color:var(--text);}
+  .field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--teal); outline-offset:1px; border-color:var(--teal);}
+  .role-toggle{display:flex; gap:8px; margin-bottom:16px;}
+  .role-btn{flex:1; padding:10px; border:1px solid var(--border); background:#fff; border-radius:4px; text-align:center; font-size:13px; font-weight:500; color:var(--text-soft);}
+  .role-btn.active{border-color:var(--teal); color:var(--teal); background:#EEF6F6; font-weight:600;}
+  .btn-primary{width:100%; padding:11px; background:var(--teal); color:#fff; border:none; border-radius:4px; font-size:14px; font-weight:600; margin-top:6px;}
+  .btn-primary:hover{background:var(--teal-dark);}
+  .login-note{font-size:11.5px; color:var(--text-soft); margin-top:14px; line-height:1.5;}
+
+  #mainShell{display:none;}
+  #mainShell.on{display:flex;}
+  .sidebar{width:210px; background:var(--navy); color:#EAF0F5; min-height:100vh; flex-shrink:0; padding:20px 0; display:flex; flex-direction:column;}
+  .side-brand{padding:0 20px 20px; border-bottom:1px solid rgba(255,255,255,0.12); margin-bottom:14px;}
+  .side-brand .mark{width:32px;height:32px;border-radius:7px;background:var(--teal); display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;margin-bottom:10px;}
+  .side-brand h2{font-size:15px; color:#fff;}
+  .side-brand p{font-size:11px; color:#9FB4C4; margin-top:2px;}
+  .nav-item{padding:10px 20px; font-size:13.5px; color:#C6D4DE; cursor:pointer; border-left:3px solid transparent; display:flex; align-items:center; gap:9px;}
+  .nav-item:hover{background:rgba(255,255,255,0.05); color:#fff;}
+  .nav-item.active{background:rgba(255,255,255,0.08); color:#fff; border-left-color:var(--teal); font-weight:600;}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:#5A7385;}
+  .nav-item.active .nav-dot{background:#5FD3C4;}
+  .side-foot{margin-top:auto; padding:16px 20px 0; border-top:1px solid rgba(255,255,255,0.12);}
+  .side-user{font-size:12.5px; color:#fff; font-weight:600;}
+  .side-role{font-size:11px; color:#9FB4C4; margin-bottom:10px;}
+  .logout-btn{background:none; border:1px solid rgba(255,255,255,0.25); color:#C6D4DE; font-size:12px; padding:6px 10px; border-radius:4px; width:100%;}
+  .logout-btn:hover{border-color:#fff; color:#fff;}
+
+  .main{flex:1; min-width:0; display:flex; flex-direction:column;}
+  .topbar{background:var(--surface); border-bottom:1px solid var(--border); padding:16px 28px; display:flex; align-items:center; justify-content:space-between;}
+  .topbar h1{font-size:18px;}
+  .topbar .sub{font-size:12.5px; color:var(--text-soft); margin-top:2px;}
+  #view{padding:26px 28px 60px; max-width:1180px;}
+
+  .panel{background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:22px;}
+  .panel + .panel{margin-top:18px;}
+  .section-title{font-size:14.5px; font-weight:600; margin-bottom:14px; padding-bottom:9px; border-bottom:1px solid var(--border); color:var(--navy);}
+  .subhead{font-size:12.5px; font-weight:600; color:var(--text-soft); margin:14px 0 8px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px 18px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px 18px;}
+  @media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr;}}
+  .checks{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{border:1px solid var(--border); padding:6px 11px; border-radius:16px; font-size:12.5px; color:var(--text-soft); background:#fff; user-select:none;}
+  .chip.on{background:var(--teal); border-color:var(--teal); color:#fff;}
+  .btn{padding:9px 16px; border-radius:4px; border:1px solid var(--border); background:#fff; font-size:13px; font-weight:500;}
+  .btn:hover{border-color:var(--teal); color:var(--teal);}
+  .btn.primary{background:var(--teal); color:#fff; border-color:var(--teal);}
+  .btn.primary:hover{background:var(--teal-dark);}
+  .btn.ghost{border:none; color:var(--text-soft);}
+  .btn.small{padding:5px 10px; font-size:12px;}
+  .btn.danger{color:var(--danger); border-color:var(--danger-bg);}
+  .inline-box{background:#F6F8F7; border:1px solid var(--border); border-radius:5px; padding:12px 14px; margin-top:10px;}
+
+  .stat-row{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;}
+  @media(max-width:900px){.stat-row{grid-template-columns:repeat(2,1fr);}}
+  .stat-card{background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px 18px;}
+  .stat-num{font-family:var(--mono); font-size:26px; font-weight:600; color:var(--navy);}
+  .stat-label{font-size:12px; color:var(--text-soft); margin-top:2px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th{text-align:left; padding:9px 10px; font-size:11.5px; color:var(--text-soft); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap;}
+  td{padding:9px 10px; border-bottom:1px solid #EEF1F0; vertical-align:top;}
+  tr.rowlink:hover{background:#F6FAF9; cursor:pointer;}
+  .idcell{font-family:var(--mono); font-size:12.5px;}
+  .tag{display:inline-block; padding:2px 8px; border-radius:11px; font-size:11px; font-weight:600;}
+  .tag.gtha{background:#E5EEF7; color:#2B5A88;}
+  .tag.gtka{background:#EAF2EA; color:#2F7A45;}
+  .tag.ghemi{background:#F3E9F3; color:#7A3F8C;}
+  .tag.due{background:var(--warn-bg); color:var(--warn);}
+  .tag.overdue{background:var(--danger-bg); color:var(--danger);}
+  .tag.done{background:var(--success-bg); color:var(--success);}
+  .tag.none{background:var(--success-bg); color:var(--success);}
+  .tag.hascomp{background:var(--danger-bg); color:var(--danger);}
+  .tag.revised{background:var(--danger-bg); color:var(--danger);}
+
+  .filters{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; align-items:end;}
+  .filters .field{margin-bottom:0; min-width:150px;}
+  .empty{padding:40px 10px; text-align:center; color:var(--text-soft);}
+  .empty h3{color:var(--text); font-size:15px; margin-bottom:6px;}
+
+  .overlay{position:fixed; inset:0; background:rgba(15,25,25,0.4); display:none; align-items:flex-start; justify-content:flex-end; z-index:50;}
+  .overlay.on{display:flex;}
+  .drawer{width:600px; max-width:94vw; background:var(--surface); height:100vh; overflow-y:auto; padding:26px 28px 80px; border-left:1px solid var(--border);}
+  .drawer-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;}
+  .close-x{background:none;border:none;font-size:20px;color:var(--text-soft); line-height:1;}
+  .kv{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; font-size:13px; margin-bottom:4px;}
+  .kv div span{display:block; color:var(--text-soft); font-size:11px; margin-bottom:2px;}
+  .fu-row{border:1px solid var(--border); border-radius:5px; padding:12px 14px; margin-bottom:10px;}
+  .fu-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .toast{position:fixed; bottom:22px; right:22px; background:var(--navy); color:#fff; padding:12px 18px; border-radius:5px; font-size:13px; z-index:100; display:none; box-shadow:0 6px 18px rgba(0,0,0,0.2);}
+  .charts-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media(max-width:900px){.charts-grid{grid-template-columns:1fr;}}
+  .chart-box{background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px;}
+  .chart-box h4{font-size:13px; margin-bottom:12px; color:var(--navy);}
+  canvas{max-height:260px;}
+
+  .img-grid{display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;}
+  .img-thumb{position:relative; width:92px; height:92px; border-radius:5px; overflow:hidden; border:1px solid var(--border); background:#EEE;}
+  .img-thumb img{width:100%; height:100%; object-fit:cover; cursor:pointer; display:block;}
+  .img-thumb .rm{position:absolute; top:3px; right:3px; background:rgba(10,15,15,0.6); color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:12px; line-height:1;}
+  .upload-box{border:1px dashed var(--border); border-radius:5px; padding:12px; font-size:12px; color:var(--text-soft);}
+  .lightbox{position:fixed; inset:0; background:rgba(10,15,15,0.88); display:none; align-items:center; justify-content:center; z-index:200;}
+  .lightbox.on{display:flex;}
+  .lightbox img{max-width:90vw; max-height:88vh; border-radius:4px;}
+  .lightbox .close-x{position:absolute; top:18px; right:26px; color:#fff; font-size:30px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="login-mark">AR</div>
+      <h1>Arthroplasty Registry</h1>
+      <div class="login-sub">Prospective THA / TKA / hemiarthroplasty data collection</div>
+      <div class="field"><label>Username</label><input id="loginName" type="text" autocomplete="username" placeholder="Your username"></div><div class="field"><label>Password</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password"></div>
+      <div class="field">
+        <label>Sign in as</label>
+        <div class="role-toggle">
+          <div class="role-btn active" data-role="entry">Data entry</div>
+          <div class="role-btn" data-role="admin">Admin</div>
+        </div>
+      </div>
+      
+      <button class="btn-primary" id="loginBtn">Enter registry</button>
+      <div class="login-note">Records and radiographs are stored in the browser (localStorage) or the host environment storage. Access is authenticated and registry data is stored in the cloud database. This deployment still requires institutional governance, privacy review, backups, and appropriate clinical data protection before real patient-identifiable use. Only enter data your institution has approved for this tool. Support: samsonriders@yahoo.com · oyagbesanolusegun@gmail.com</div>
+    </div>
+  </div>
+
+  <div id="mainShell">
+    <aside class="sidebar">
+      <div class="side-brand">
+        <div class="mark">AR</div>
+        <h2>Arthroplasty Registry</h2>
+        <p>Hip &amp; knee arthroplasty registry</p>
+      </div>
+      <div class="nav-item active" data-view="entry"><span class="nav-dot"></span>New entry</div>
+      <div class="nav-item" data-view="records"><span class="nav-dot"></span>Patient records</div>
+      <div class="nav-item" data-view="analytics"><span class="nav-dot"></span>Analytics</div>
+      <div class="nav-item" data-view="admin" id="navAdmin" style="display:none;"><span class="nav-dot"></span>Admin oversight</div>
+      <div class="side-foot">
+        <div class="side-user" id="sideUserName"></div>
+        <div class="side-role" id="sideUserRole"></div>
+        <button class="logout-btn" id="logoutBtn">Sign out</button>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div><h1 id="topTitle">New entry</h1><div class="sub" id="topSub">Record a new arthroplasty case</div></div>
+      </div>
+      <div id="view"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay" id="drawerOverlay"><div class="drawer" id="drawerBody"></div></div>
+<div class="lightbox" id="lightbox"><button class="close-x" id="lightboxClose">&times;</button><img id="lightboxImg" src=""></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================= STATE & STORAGE ============================= */
+const ADMIN_CODE = "REG-ADMIN-2026";
+let currentUser = null;
+let DB = [];
+let ACTIVITY = [];
+
+const FU_SCHEDULE = [
+  {label:'2 weeks', days:14},{label:'6 weeks', days:42},{label:'3 months', days:90},
+  {label:'6 months', days:182},{label:'1 year', days:365},
+];
+const COMORBIDS = ['Diabetes','Hypertension','Cardiac disease','Renal disease','Obesity','Smoker','Osteoporosis','Prior joint surgery','Other'];
+const INTRAOP_COMPL = ['Fracture','Nerve injury','Vascular injury','Other','None'];
+const POSTOP_COMPL = ['DVT','PE','Surgical site infection','Dislocation','Periprosthetic fracture','Nerve injury','Death','Other','None'];
+const FRACTURE_TIMINGS_HIP = [
+  'During dislocation','During relocation','During femoral broaching','During acetabular reaming',
+  'During stem impaction','During implant insertion','Other','Unknown'
+];
+const FRACTURE_TIMINGS_KNEE = [
+  'During tibial preparation','During femoral preparation (knee)','During component insertion',
+  'During trial reduction','Other','Unknown'
+];
+function fractureTimingsFor(proc){
+  return (proc==='TKA') ? FRACTURE_TIMINGS_KNEE : FRACTURE_TIMINGS_HIP;
+}
+const REVISION_REASONS = ['Dislocation','Deep infection','Periprosthetic fracture','Aseptic loosening','Implant malposition','Polyethylene/bearing wear','Instability','Other'];
+const VTE_OPTIONS = ['LMWH','Aspirin','Warfarin/DOAC','Mechanical only','Combination (mechanical + pharmacological)','None'];
+
+function diagOptions(proc){
+  if(proc==='TKA') return ['Osteoarthritis','Rheumatoid arthritis','Post-traumatic arthritis','Avascular necrosis','Revision','Other'];
+  return ['Osteoarthritis','Avascular necrosis','Neck of femur fracture','Rheumatoid arthritis','Post-traumatic arthritis','Revision','Other'];
+}
+function approachOptions(proc){
+  if(proc==='TKA') return ['Medial parapatellar','Subvastus','Midvastus','Lateral parapatellar','Other'];
+  return ['Posterior','Direct anterior','Anterolateral','Lateral (Hardinge)','Other'];
+}
+function followupScoreLabel(proc){
+  if(proc==='TKA') return 'WOMAC total (0-96, lower better)';
+  return 'Harris Hip Score total (0-100, higher better)';
+}
+function preopScoreHint(proc){
+  if(proc==='TKA') return 'WOMAC total 0-96 (lower better) or OKS';
+  return 'WOMAC total 0-96 + Harris Hip Score 0-100';
+}
+
+
+/* ---- Cloud API storage adapter: NO localStorage ---- */
+window.storage = {
+  async list(prefix, _shared){
+    if(prefix==='patient:') { const r=await fetch('/api/records'); if(!r.ok) throw new Error('records'); const rows=await r.json(); return {keys:rows.map(x=>'patient:'+x.id)}; }
+    if(prefix==='img:') { return {keys:[]}; }
+    return {keys:[]};
+  },
+  async get(key, _shared){
+    if(key==='activity_log'){ const r=await fetch('/api/activity'); if(!r.ok) return null; return {value:JSON.stringify(await r.json())}; }
+    if(key.startsWith('patient:')) { const id=key.slice(8); const r=await fetch('/api/records/'+encodeURIComponent(id)); if(!r.ok) return null; return {value:JSON.stringify(await r.json())}; }
+    if(key.startsWith('img:')) { const r=await fetch('/api/images/'+encodeURIComponent(key)); if(!r.ok) return null; const blob=await r.blob(); return {value:await blobToDataUrl(blob)}; }
+    return null;
+  },
+  async set(key, value, _shared){
+    if(key==='activity_log') return;
+    if(key.startsWith('patient:')){
+      const id=key.slice(8); const rec=JSON.parse(value);
+      const method=rec.id===id ? 'PUT':'POST'; const url=method==='PUT'?'/api/records/'+encodeURIComponent(id):'/api/records';
+      const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({id,record:rec})});
+      if(!r.ok) throw new Error(await r.text()); return;
+    }
+  },
+  async delete(key, _shared){
+    if(key.startsWith('patient:')) { const id=key.slice(8); const r=await fetch('/api/records/'+encodeURIComponent(id),{method:'DELETE'}); if(!r.ok && r.status!==404) throw new Error('delete'); return; }
+    if(key.startsWith('img:')) { const r=await fetch('/api/images/'+encodeURIComponent(key),{method:'DELETE'}); if(!r.ok && r.status!==404) throw new Error('image delete'); }
+  }
+};
+function blobToDataUrl(blob){ return new Promise((resolve,reject)=>{ const rd=new FileReader(); rd.onload=()=>resolve(rd.result); rd.onerror=reject; rd.readAsDataURL(blob); }); }
+/* ---- per-patient storage ---- */
+async function loadDB(){
+  try{
+    const listRes = await window.storage.list('patient:', true);
+    const keys = (listRes && listRes.keys) ? listRes.keys : [];
+    const results = await Promise.all(keys.map(k=> window.storage.get(k, true).catch(()=>null)));
+    DB = results.filter(Boolean).map(r=> JSON.parse(r.value));
+  }catch(e){ DB = []; }
+}
+async function savePatientRecord(rec){ await window.storage.set('patient:'+rec.id, JSON.stringify(rec), true); }
+async function deletePatientRecord(id){
+  try{ await window.storage.delete('patient:'+id, true); }catch(e){}
+  try{
+    const imgs = await window.storage.list('img:'+id+':', true);
+    if(imgs && imgs.keys) for(const k of imgs.keys){ try{ await window.storage.delete(k, true); }catch(e){} }
+  }catch(e){}
+}
+async function loadActivity(){
+  try{ const r = await window.storage.get('activity_log', true); ACTIVITY = r? JSON.parse(r.value): []; }
+  catch(e){ ACTIVITY = []; }
+}
+async function saveActivity(){ await window.storage.set('activity_log', JSON.stringify(ACTIVITY), true); }
+async function logActivity(action, patientId){ try{ const r=await fetch('/api/activity'); if(r.ok) ACTIVITY=await r.json(); }catch(e){} }
+
+/* ---- imaging ---- */
+function fileToCompressedDataUrl(file, maxDim=1100, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w=img.width, h=img.height;
+        if(w>h && w>maxDim){h=Math.round(h*maxDim/w); w=maxDim;}
+        else if(h>=w && h>maxDim){w=Math.round(w*maxDim/h); h=maxDim;}
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function storeImage(patientId, section, dataUrl){
+  const key = 'img:'+patientId+':'+section+':'+Date.now()+':'+Math.floor(Math.random()*1000);
+  const r=await fetch('/api/images',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key,registry_id:patientId,section,data_url:dataUrl})});
+  if(!r.ok) throw new Error('image upload failed'); return key;
+}
+async function listPatientImages(patientId){
+  const r=await fetch('/api/images?registry_id='+encodeURIComponent(patientId)); if(!r.ok) return [];
+  const items=await r.json();
+  return Promise.all(items.map(async im=>{ const x=await fetch('/api/images/'+encodeURIComponent(im.key)); const b=await x.blob(); return {key:im.key,dataUrl:await blobToDataUrl(b),section:im.section}; }));
+}
+function openLightbox(src){ document.getElementById('lightboxImg').src=src; document.getElementById('lightbox').classList.add('on'); }
+document.getElementById('lightboxClose').addEventListener('click', ()=> document.getElementById('lightbox').classList.remove('on'));
+document.getElementById('lightbox').addEventListener('click', (e)=>{ if(e.target.id==='lightbox') e.currentTarget.classList.remove('on'); });
+
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
+  clearTimeout(window._toastTimer); window._toastTimer=setTimeout(()=>{t.style.display='none';},2600);
+}
+function nextId(){
+  let max=0; DB.forEach(p=>{ const n=parseInt((p.id||'P-0').split('-')[1]||0,10); if(n>max) max=n; });
+  return 'P-'+String(max+1).padStart(4,'0');
+}
+function addDays(dateStr, n){ const d=new Date(dateStr); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function buildFollowups(surgeryDate){
+  return FU_SCHEDULE.map(f=>({label:f.label, dueDate: addDays(surgeryDate, f.days), status:'scheduled', visitDate:null, score:null, lldMm:'', complications:[], notes:''}));
+}
+function fuLiveStatus(fu){
+  if(fu.status==='completed') return 'done';
+  if(fu.status==='lost') return 'overdue';
+  if(todayStr() > fu.dueDate) return 'overdue';
+  return 'due';
+}
+
+/* ============================= LOGIN ============================= */
+document.querySelectorAll('.role-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.role-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('adminCodeField').style.display = b.dataset.role==='admin' ? 'block':'none';
+  });
+});
+document.getElementById('loginBtn').addEventListener('click', async ()=>{
+  const username = document.getElementById('loginName').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if(!username || !password){ toast('Enter username and password'); return; }
+  try{
+    const rr=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});
+    if(!rr.ok){ toast('Invalid username or password'); return; }
+    const data=await rr.json(); currentUser={name:data.user.name, role:data.user.role, username:data.user.username};
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('mainShell').classList.add('on');
+    document.getElementById('sideUserName').textContent=currentUser.name;
+    document.getElementById('sideUserRole').textContent=currentUser.role==='admin'?'Administrator':(currentUser.role==='surgeon'?'Surgeon':'Data entry');
+    if(currentUser.role==='admin') document.getElementById('navAdmin').style.display='flex';
+    await loadDB(); await loadActivity(); goView('entry');
+  }catch(e){ toast('Could not connect to registry server'); }
+});
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{ await fetch('/api/logout',{method:'POST'}); location.reload(); });
+
+/* ============================= NAV ============================= */
+document.querySelectorAll('.nav-item').forEach(n=> n.addEventListener('click', ()=> goView(n.dataset.view)));
+const VIEW_META = {
+  entry:{title:'New entry', sub:'Record a new arthroplasty case'},
+  records:{title:'Patient records', sub:'Retrieve the whole registry or a defined cohort'},
+  analytics:{title:'Analytics', sub:'Registry-wide trends and outcomes'},
+  admin:{title:'Admin oversight', sub:'Track data-entry progress and follow-up compliance'},
+};
+async function goView(v){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view===v));
+  document.getElementById('topTitle').textContent = VIEW_META[v].title;
+  document.getElementById('topSub').textContent = VIEW_META[v].sub;
+  await loadDB();
+  if(v==='entry') renderEntry();
+  if(v==='records') renderRecords();
+  if(v==='analytics') renderAnalytics();
+  if(v==='admin') renderAdmin();
+}
+
+/* ============================= ENTRY FORM ============================= */
+let pendingImages = {preop:[], postop:[]};
+let existingImages = {preop:[], postop:[]};
+
+function chipsHtml(name, options, selected){
+  return options.map(o=>`<div class="chip ${selected.includes(o)?'on':''}" data-group="${name}" data-val="${o}">${o}</div>`).join('');
+}
+function blankRecord(){
+  return {
+    id:null, mrn:'', name:'', age:'', sex:'M', heightCm:'', weightKg:'',
+    procedure:'THA', side:'Left', surgeryDate: todayStr(), surgeon:'', hospital:'',
+    previousSurgery:{had:false, details:''},
+    preop:{diagnosis:'Osteoarthritis', asa:'2', comorbidities:[], anticoagulant:false, preopScore:'', preopHb:'', mobilityStatus:'', lldMm:'', malalignmentType:'Neutral', malalignmentDeg:'', notes:''},
+    intraop:{anesthesia:'Spinal', approach:'Posterior', cupFixation:'Cementless', stemFixation:'Cementless', fixation:'Cementless', constraintType:'Unconstrained (CR)', bearingType:'Fixed', patellaResurfaced:'No', implantBrand:'', componentDetails:'', operativeTimeMin:'', tourniquetTimeMin:'', bloodLossMl:'', transfusion:false, antibioticProphylaxis:'', vteProphylaxis:'LMWH', vteDurationWeeks:'', complications:[], fractureTiming:'', fractureManagement:'', notes:''},
+    postop:{losDay:'', postopHb:'', mobilizationDay:'', dischargeDestination:'Home', painScore:'', lldMm:'', lldMethod:'Clinical', complications:[], notes:''},
+    revision:{performed:false, date:'', reason:'', notes:''},
+    followups:null
+  };
+}
+async function renderEntry(editRecord, keepPending){
+  const r = editRecord || blankRecord();
+  if(!keepPending) pendingImages = {preop:[], postop:[]};
+  existingImages = {preop:[], postop:[]};
+  if(editRecord && editRecord.id){
+    const imgs = await listPatientImages(editRecord.id);
+    imgs.forEach(im=> existingImages[im.section].push(im));
+  }
+  const isHip = r.procedure==='THA' || r.procedure==='Hemi';
+  const isKnee = r.procedure==='TKA';
+  const view = document.getElementById('view');
+  view.innerHTML = `
+    <div class="panel">
+      <div class="section-title">Demographics &amp; procedure</div>
+      <div class="grid3">
+        <div class="field"><label>Hospital number / MRN</label><input id="f_mrn" value="${r.mrn}"></div>
+        <div class="field"><label>Patient name / initials</label><input id="f_name" value="${r.name}"></div>
+        <div class="field"><label>Age</label><input id="f_age" type="number" value="${r.age}"></div>
+        <div class="field"><label>Sex</label><select id="f_sex"><option ${r.sex==='M'?'selected':''}>M</option><option ${r.sex==='F'?'selected':''}>F</option></select></div>
+        <div class="field"><label>Height (cm)</label><input id="f_height" type="number" value="${r.heightCm}"></div>
+        <div class="field"><label>Weight (kg)</label><input id="f_weight" type="number" value="${r.weightKg}"></div>
+        <div class="field"><label>Procedure</label>
+          <select id="f_procedure">
+            <option value="THA" ${r.procedure==='THA'?'selected':''}>Total Hip Arthroplasty</option>
+            <option value="TKA" ${r.procedure==='TKA'?'selected':''}>Total Knee Arthroplasty</option>
+            <option value="Hemi" ${r.procedure==='Hemi'?'selected':''}>Hemiarthroplasty</option>
+          </select>
+        </div>
+        <div class="field"><label>Side</label>
+          <select id="f_side"><option ${r.side==='Left'?'selected':''}>Left</option><option ${r.side==='Right'?'selected':''}>Right</option><option ${r.side==='Bilateral'?'selected':''}>Bilateral</option></select>
+        </div>
+        <div class="field"><label>Date of surgery</label><input id="f_surgdate" type="date" value="${r.surgeryDate}"></div>
+        <div class="field"><label>Surgeon</label><input id="f_surgeon" value="${r.surgeon}"></div>
+        <div class="field"><label>Hospital / site</label><input id="f_hospital" value="${r.hospital}"></div>
+      </div>
+      <div class="subhead">Previous surgery on this joint</div>
+      <div class="grid3">
+        <div class="field"><label>Previous surgery on this joint?</label>
+          <select id="prevsurg_had"><option value="no" ${!r.previousSurgery.had?'selected':''}>No</option><option value="yes" ${r.previousSurgery.had?'selected':''}>Yes</option></select>
+        </div>
+        <div class="field" style="grid-column: span 2;"><label>Details (procedure, approximate date)</label><input id="prevsurg_details" value="${r.previousSurgery.details}"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Pre-operative</div>
+      <div class="grid3">
+        <div class="field"><label>Diagnosis / indication</label><select id="p_diag">${diagOptions(r.procedure).map(o=>`<option ${o===r.preop.diagnosis?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div class="field"><label>ASA grade</label><select id="p_asa">${[1,2,3,4].map(n=>`<option value="${n}" ${String(n)===String(r.preop.asa)?'selected':''}>ASA ${n}</option>`).join('')}</select></div>
+        <div class="field"><label>Pre-op functional score</label><input id="p_score" type="number" value="${r.preop.preopScore}" placeholder="${preopScoreHint(r.procedure)}"></div>
+        <div class="field" style="grid-column:span 2;"><label style="color:var(--text-soft);font-size:11.5px;">Hip: record WOMAC (0-96) and/or Harris Hip Score (0-100). Knee: record WOMAC total (0-96) or OKS. Enter the primary score used at your centre.</label></div>
+        <div class="field"><label>Pre-op hemoglobin (g/dL)</label><input id="p_hb" type="number" step="0.1" value="${r.preop.preopHb}"></div>
+        <div class="field"><label>Pre-op mobility status</label><input id="p_mob" placeholder="e.g. Independent, uses cane" value="${r.preop.mobilityStatus}"></div>
+        <div class="field"><label>On anticoagulant / antiplatelet</label><select id="p_anticoag"><option value="no" ${!r.preop.anticoagulant?'selected':''}>No</option><option value="yes" ${r.preop.anticoagulant?'selected':''}>Yes</option></select></div>
+        ${isHip ? `<div class="field"><label>Pre-op leg length discrepancy (mm)</label><input id="p_lld" type="number" value="${r.preop.lldMm}"></div>` : ''}
+        ${isKnee ? `
+        <div class="field"><label>Pre-op coronal malalignment</label><select id="p_malalign_type"><option ${r.preop.malalignmentType==='Neutral'?'selected':''}>Neutral</option><option ${r.preop.malalignmentType==='Varus'?'selected':''}>Varus</option><option ${r.preop.malalignmentType==='Valgus'?'selected':''}>Valgus</option></select></div>
+        <div class="field"><label>Malalignment (degrees)</label><input id="p_malalign_deg" type="number" value="${r.preop.malalignmentDeg}"></div>` : ''}
+      </div>
+      <div class="field"><label>Comorbidities</label><div class="checks" id="p_comorbid">${chipsHtml('p_comorbid', COMORBIDS, r.preop.comorbidities)}</div></div>
+      <div class="field"><label>Notes</label><textarea id="p_notes" rows="2">${r.preop.notes}</textarea></div>
+
+      <div class="subhead">Pre-operative radiographs</div>
+      <div class="upload-box">Upload X-rays / imaging (stored as compressed images). <input type="file" id="upload_preop" accept="image/*" multiple></div>
+      <div class="img-grid" id="gallery_preop"></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Intra-operative</div>
+      <div class="grid3">
+        <div class="field"><label>Anesthesia</label><select id="i_anes">${['GA','Spinal','Regional','Combined'].map(o=>`<option ${o===r.intraop.anesthesia?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div class="field"><label>Surgical approach</label><select id="i_approach">${approachOptions(r.procedure).map(o=>`<option ${o===r.intraop.approach?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div class="field"><label>Operative time (min)</label><input id="i_time" type="number" value="${r.intraop.operativeTimeMin}"></div>
+        ${isKnee ? `<div class="field"><label>Tourniquet time (min)</label><input id="i_tourniquet" type="number" value="${r.intraop.tourniquetTimeMin}"></div>` : ''}
+        <div class="field"><label>Estimated blood loss (mL)</label><input id="i_ebl" type="number" value="${r.intraop.bloodLossMl}"></div>
+        <div class="field"><label>Intra-op transfusion</label><select id="i_transfusion"><option value="no" ${!r.intraop.transfusion?'selected':''}>No</option><option value="yes" ${r.intraop.transfusion?'selected':''}>Yes</option></select></div>
+      </div>
+
+      ${isHip ? `
+      <div class="subhead">Fixation</div>
+      <div class="grid3">
+        ${r.procedure==='THA' ? `<div class="field"><label>Cup fixation</label><select id="i_cupfix"><option ${r.intraop.cupFixation==='Cementless'?'selected':''}>Cementless</option><option ${r.intraop.cupFixation==='Cemented'?'selected':''}>Cemented</option></select></div>` : ''}
+        <div class="field"><label>Stem fixation</label><select id="i_stemfix"><option ${r.intraop.stemFixation==='Cementless'?'selected':''}>Cementless</option><option ${r.intraop.stemFixation==='Cemented'?'selected':''}>Cemented</option></select></div>
+        <div class="field"><label>Implant brand / system</label><input id="i_implant" value="${r.intraop.implantBrand}"></div>
+      </div>` : ''}
+
+      ${isKnee ? `
+      <div class="subhead">Implant configuration</div>
+      <div class="grid3">
+        <div class="field"><label>Fixation</label><select id="i_fix"><option ${r.intraop.fixation==='Cementless'?'selected':''}>Cementless</option><option ${r.intraop.fixation==='Cemented'?'selected':''}>Cemented</option><option ${r.intraop.fixation==='Hybrid'?'selected':''}>Hybrid</option></select></div>
+        <div class="field"><label>Constraint</label><select id="i_constraint">${['Unconstrained (CR)','Posterior stabilized (PS)','Semi-constrained (constrained condylar)','Hinged (fully constrained)'].map(o=>`<option ${o===r.intraop.constraintType?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div class="field"><label>Bearing</label><select id="i_bearing"><option ${r.intraop.bearingType==='Fixed'?'selected':''}>Fixed</option><option ${r.intraop.bearingType==='Mobile'?'selected':''}>Mobile</option></select></div>
+        <div class="field"><label>Patella resurfaced</label><select id="i_patella"><option value="No" ${r.intraop.patellaResurfaced==='No'?'selected':''}>No</option><option value="Yes" ${r.intraop.patellaResurfaced==='Yes'?'selected':''}>Yes</option></select></div>
+        <div class="field"><label>Implant brand / system</label><input id="i_implant" value="${r.intraop.implantBrand}"></div>
+      </div>` : ''}
+
+      <div class="field" style="margin-top:14px;"><label>Component details (sizes, catalog #s — optional)</label><input id="i_compdetails" value="${r.intraop.componentDetails}"></div>
+
+      <div class="subhead">Prophylaxis</div>
+      <div class="grid3">
+        <div class="field"><label>Antibiotic prophylaxis</label><input id="i_abx" value="${r.intraop.antibioticProphylaxis}" placeholder="e.g. Cefazolin, single dose"></div>
+        <div class="field"><label>VTE prophylaxis</label><select id="i_vte">${VTE_OPTIONS.map(o=>`<option ${o===r.intraop.vteProphylaxis?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div class="field"><label>VTE prophylaxis duration (weeks)</label><input id="i_vte_dur" type="number" value="${r.intraop.vteDurationWeeks}"></div>
+      </div>
+
+      <div class="field"><label>Intra-operative complications</label><div class="checks" id="i_compl">${chipsHtml('i_compl', INTRAOP_COMPL, r.intraop.complications)}</div></div>
+      <div class="inline-box" id="fractureDetailBox" style="display:${r.intraop.complications.includes('Fracture')?'block':'none'};">
+        <div class="grid2">
+          <div class="field"><label>When did the fracture occur?</label><select id="i_fx_timing">${fractureTimingsFor(r.procedure).map(o=>`<option ${o===r.intraop.fractureTiming?'selected':''}>${o}</option>`).join('')}</select></div>
+          <div class="field"><label>Management</label><input id="i_fx_mgmt" value="${r.intraop.fractureManagement}" placeholder="e.g. Cerclage wiring, longer stem"></div>
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px;"><label>Notes</label><textarea id="i_notes" rows="2">${r.intraop.notes}</textarea></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Post-operative</div>
+      <div class="grid3">
+        <div class="field"><label>Length of stay (days)</label><input id="o_los" type="number" value="${r.postop.losDay}"></div>
+        <div class="field"><label>Post-op hemoglobin (g/dL)</label><input id="o_hb" type="number" step="0.1" value="${r.postop.postopHb}"></div>
+        <div class="field"><label>Day of first mobilization</label><input id="o_mobday" type="number" value="${r.postop.mobilizationDay}"></div>
+        <div class="field"><label>Discharge destination</label><select id="o_dest">${['Home','Rehab facility','Other'].map(o=>`<option ${o===r.postop.dischargeDestination?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div class="field"><label>Pain score at discharge (0-10)</label><input id="o_pain" type="number" min="0" max="10" value="${r.postop.painScore}"></div>
+        ${isHip ? `
+        <div class="field"><label>Post-op leg length discrepancy (mm)</label><input id="o_lld" type="number" value="${r.postop.lldMm}"></div>
+        <div class="field"><label>LLD measurement method</label><select id="o_lld_method"><option ${r.postop.lldMethod==='Clinical'?'selected':''}>Clinical</option><option ${r.postop.lldMethod==='Radiographic'?'selected':''}>Radiographic</option></select></div>` : ''}
+      </div>
+      <div class="field"><label>Post-operative complications</label><div class="checks" id="o_compl">${chipsHtml('o_compl', POSTOP_COMPL, r.postop.complications)}</div></div>
+      <div class="field"><label>Notes</label><textarea id="o_notes" rows="2">${r.postop.notes}</textarea></div>
+
+      <div class="subhead">Post-operative radiographs</div>
+      <div class="upload-box">Upload X-rays / imaging (stored as compressed images). <input type="file" id="upload_postop" accept="image/*" multiple></div>
+      <div class="img-grid" id="gallery_postop"></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Early revision</div>
+      <div class="grid3">
+        <div class="field"><label>Revision performed?</label><select id="rev_performed"><option value="no" ${!r.revision.performed?'selected':''}>No</option><option value="yes" ${r.revision.performed?'selected':''}>Yes</option></select></div>
+        <div class="field"><label>Date of revision</label><input id="rev_date" type="date" value="${r.revision.date}"></div>
+        <div class="field"><label>Reason for revision</label><select id="rev_reason">${REVISION_REASONS.map(o=>`<option ${o===r.revision.reason?'selected':''}>${o}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>Revision notes</label><textarea id="rev_notes" rows="2">${r.revision.notes}</textarea></div>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button class="btn primary" id="saveEntryBtn">${editRecord? 'Save changes':'Save case'}</button>
+      ${editRecord? '<button class="btn" id="cancelEditBtn">Cancel</button>' : ''}
+    </div>
+  `;
+
+  drawGallery('preop'); drawGallery('postop');
+
+  view.querySelectorAll('.chip').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      if(c.dataset.val==='None'){ c.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); }
+      else { c.classList.toggle('on'); const none = c.parentElement.querySelector('.chip[data-val="None"]'); if(none) none.classList.remove('on'); }
+      if(c.dataset.group==='i_compl'){
+        const hasFx = Array.from(document.querySelectorAll('#i_compl .chip.on')).some(x=>x.dataset.val==='Fracture');
+        document.getElementById('fractureDetailBox').style.display = hasFx ? 'block':'none';
+      }
+    });
+  });
+
+  document.getElementById('f_procedure').addEventListener('change', (e)=>{
+    const snap = Object.assign({}, r, collectEntry());
+    snap.procedure = e.target.value;
+    renderEntry(snap, true);
+  });
+  document.getElementById('upload_preop').addEventListener('change', (e)=> handleUpload(e, 'preop', r));
+  document.getElementById('upload_postop').addEventListener('change', (e)=> handleUpload(e, 'postop', r));
+
+  document.getElementById('saveEntryBtn').addEventListener('click', async ()=>{
+    const rec = collectEntry();
+    if(!rec.surgeryDate || !rec.procedure){ toast('Date of surgery and procedure are required'); return; }
+    if(!editRecord){
+      rec.id = nextId();
+      rec.enteredBy = currentUser.name;
+      rec.enteredAt = new Date().toISOString();
+      rec.followups = buildFollowups(rec.surgeryDate);
+      DB.push(rec);
+      for(const im of pendingImages.preop) await storeImage(rec.id, 'preop', im.dataUrl);
+      for(const im of pendingImages.postop) await storeImage(rec.id, 'postop', im.dataUrl);
+      pendingImages = {preop:[], postop:[]};
+      await savePatientRecord(rec);
+      await logActivity('created', rec.id);
+      toast('Case '+rec.id+' saved');
+      renderEntry();
+    } else {
+      const idx = DB.findIndex(p=>p.id===editRecord.id);
+      rec.id = editRecord.id; rec.enteredBy = editRecord.enteredBy; rec.enteredAt = editRecord.enteredAt;
+      rec.followups = editRecord.followups;
+      for(const im of pendingImages.preop) await storeImage(rec.id, 'preop', im.dataUrl);
+      for(const im of pendingImages.postop) await storeImage(rec.id, 'postop', im.dataUrl);
+      pendingImages = {preop:[], postop:[]};
+      DB[idx] = rec;
+      await savePatientRecord(rec);
+      await logActivity('edited', rec.id);
+      toast('Case '+rec.id+' updated');
+      goView('records');
+    }
+  });
+  if(editRecord) document.getElementById('cancelEditBtn').addEventListener('click', ()=> goView('records'));
+
+  async function handleUpload(e, section, baseRecord){
+    const files = Array.from(e.target.files || []);
+    for(const f of files){
+      try{
+        const dataUrl = await fileToCompressedDataUrl(f);
+        if(baseRecord && baseRecord.id){
+          const key = await storeImage(baseRecord.id, section, dataUrl);
+          existingImages[section].push({key, dataUrl, section});
+        } else {
+          pendingImages[section].push({dataUrl});
+        }
+      }catch(err){ toast('Could not read image: '+f.name); }
+    }
+    drawGallery(section);
+  }
+  function drawGallery(section){
+    const el = document.getElementById('gallery_'+section);
+    const existingHtml = existingImages[section].map((im,i)=>`
+      <div class="img-thumb"><img src="${im.dataUrl}" data-src="${im.dataUrl}"><button class="rm" data-existing="${section}:${i}">&times;</button></div>`).join('');
+    const pendingHtml = pendingImages[section].map((im,i)=>`
+      <div class="img-thumb"><img src="${im.dataUrl}" data-src="${im.dataUrl}"><button class="rm" data-pending="${section}:${i}">&times;</button></div>`).join('');
+    el.innerHTML = existingHtml + pendingHtml;
+    el.querySelectorAll('img').forEach(img=> img.addEventListener('click', ()=> openLightbox(img.dataset.src)));
+    el.querySelectorAll('[data-pending]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const [sec, idx] = btn.dataset.pending.split(':');
+        pendingImages[sec].splice(parseInt(idx,10),1);
+        drawGallery(sec);
+      });
+    });
+    el.querySelectorAll('[data-existing]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const [sec, idx] = btn.dataset.existing.split(':');
+        const im = existingImages[sec][parseInt(idx,10)];
+        try{ await window.storage.delete(im.key, true); }catch(err){}
+        existingImages[sec].splice(parseInt(idx,10),1);
+        drawGallery(sec);
+        toast('Image removed');
+      });
+    });
+  }
+}
+function collectEntry(){
+  const val = (id)=>{ const e=document.getElementById(id); return e? e.value : ''; };
+  const getChips = (id)=> Array.from(document.querySelectorAll(`#${id} .chip.on`)).map(c=>c.dataset.val);
+  const proc = val('f_procedure');
+  return {
+    mrn: val('f_mrn'), name: val('f_name'), age: val('f_age'), sex: val('f_sex'),
+    heightCm: val('f_height'), weightKg: val('f_weight'),
+    procedure: proc, side: val('f_side'), surgeryDate: val('f_surgdate'),
+    surgeon: val('f_surgeon'), hospital: val('f_hospital'),
+    previousSurgery:{ had: val('prevsurg_had')==='yes', details: val('prevsurg_details') },
+    preop:{
+      diagnosis: val('p_diag'), asa: val('p_asa'), preopScore: val('p_score'), preopHb: val('p_hb'),
+      mobilityStatus: val('p_mob'), anticoagulant: val('p_anticoag')==='yes',
+      comorbidities: getChips('p_comorbid'), notes: val('p_notes'),
+      lldMm: val('p_lld'), malalignmentType: val('p_malalign_type')||'Neutral', malalignmentDeg: val('p_malalign_deg')
+    },
+    intraop:{
+      anesthesia: val('i_anes'), approach: val('i_approach'),
+      cupFixation: val('i_cupfix')||'', stemFixation: val('i_stemfix')||'',
+      fixation: val('i_fix')||'', constraintType: val('i_constraint')||'', bearingType: val('i_bearing')||'', patellaResurfaced: val('i_patella')||'',
+      implantBrand: val('i_implant'), componentDetails: val('i_compdetails'),
+      operativeTimeMin: val('i_time'), tourniquetTimeMin: val('i_tourniquet'), bloodLossMl: val('i_ebl'),
+      transfusion: val('i_transfusion')==='yes',
+      antibioticProphylaxis: val('i_abx'), vteProphylaxis: val('i_vte'), vteDurationWeeks: val('i_vte_dur'),
+      complications: getChips('i_compl'), fractureTiming: val('i_fx_timing'), fractureManagement: val('i_fx_mgmt'),
+      notes: val('i_notes')
+    },
+    postop:{
+      losDay: val('o_los'), postopHb: val('o_hb'), mobilizationDay: val('o_mobday'),
+      dischargeDestination: val('o_dest'), painScore: val('o_pain'),
+      lldMm: val('o_lld'), lldMethod: val('o_lld_method')||'Clinical',
+      complications: getChips('o_compl'), notes: val('o_notes')
+    },
+    revision:{ performed: val('rev_performed')==='yes', date: val('rev_date'), reason: val('rev_reason'), notes: val('rev_notes') }
+  };
+}
+
+/* ============================= RECORDS / COHORT ============================= */
+let recordFilters = {procedure:'', surgeon:'', from:'', to:'', complOnly:false, fuStatus:'', revisedOnly:false};
+function renderRecords(){
+  const view = document.getElementById('view');
+  const surgeons = [...new Set(DB.map(p=>p.surgeon).filter(Boolean))];
+  view.innerHTML = `
+    <div class="panel">
+      <div class="section-title">Filter the cohort</div>
+      <div class="filters">
+        <div class="field"><label>Procedure</label><select id="fl_proc"><option value="">All</option><option value="THA">THA</option><option value="TKA">TKA</option><option value="Hemi">Hemiarthroplasty</option></select></div>
+        <div class="field"><label>Surgeon</label><select id="fl_surgeon"><option value="">All</option>${surgeons.map(s=>`<option>${s}</option>`).join('')}</select></div>
+        <div class="field"><label>Surgery date from</label><input id="fl_from" type="date"></div>
+        <div class="field"><label>Surgery date to</label><input id="fl_to" type="date"></div>
+        <div class="field"><label>Follow-up status</label><select id="fl_fu"><option value="">Any</option><option value="overdue">Has overdue follow-up</option><option value="due">Has due follow-up</option></select></div>
+        <div class="field"><label>&nbsp;</label><div class="chip" id="fl_complOnly" style="display:inline-block;">Has any complication</div></div>
+        <div class="field"><label>&nbsp;</label><div class="chip" id="fl_revisedOnly" style="display:inline-block;">Revised only</div></div>
+        <div class="field"><label>&nbsp;</label><button class="btn" id="fl_apply">Apply filters</button></div>
+        <div class="field"><label>&nbsp;</label><button class="btn" id="fl_export">Export cohort (CSV)</button></div>
+      </div>
+      <div id="recordsTableWrap"></div>
+    </div>
+  `;
+  document.getElementById('fl_complOnly').addEventListener('click', (e)=> e.target.classList.toggle('on'));
+  document.getElementById('fl_revisedOnly').addEventListener('click', (e)=> e.target.classList.toggle('on'));
+  document.getElementById('fl_apply').addEventListener('click', ()=>{
+    recordFilters = {
+      procedure: val('fl_proc'), surgeon: val('fl_surgeon'), from: val('fl_from'), to: val('fl_to'),
+      complOnly: document.getElementById('fl_complOnly').classList.contains('on'),
+      revisedOnly: document.getElementById('fl_revisedOnly').classList.contains('on'),
+      fuStatus: val('fl_fu')
+    };
+    drawTable();
+  });
+  document.getElementById('fl_export').addEventListener('click', ()=> exportCSV(applyFilters()));
+  function val(id){ return document.getElementById(id).value; }
+  drawTable();
+
+  function applyFilters(){
+    return DB.filter(p=>{
+      if(recordFilters.procedure && p.procedure!==recordFilters.procedure) return false;
+      if(recordFilters.surgeon && p.surgeon!==recordFilters.surgeon) return false;
+      if(recordFilters.from && p.surgeryDate < recordFilters.from) return false;
+      if(recordFilters.to && p.surgeryDate > recordFilters.to) return false;
+      if(recordFilters.complOnly){
+        const hasCompl = (p.intraop.complications||[]).some(c=>c!=='None') || (p.postop.complications||[]).some(c=>c!=='None');
+        if(!hasCompl) return false;
+      }
+      if(recordFilters.revisedOnly && !(p.revision && p.revision.performed)) return false;
+      if(recordFilters.fuStatus){
+        const match = (p.followups||[]).some(f=> fuLiveStatus(f)===recordFilters.fuStatus);
+        if(!match) return false;
+      }
+      return true;
+    });
+  }
+  function drawTable(){
+    const rows = applyFilters().sort((a,b)=> (b.surgeryDate||'').localeCompare(a.surgeryDate||''));
+    const wrap = document.getElementById('recordsTableWrap');
+    if(rows.length===0){ wrap.innerHTML = `<div class="empty"><h3>No cases match these filters</h3>Try widening the date range or clearing a filter.</div>`; return; }
+    wrap.innerHTML = `
+      <div style="margin:14px 0 8px; font-size:12.5px; color:var(--text-soft);">${rows.length} of ${DB.length} case(s)</div>
+      <table>
+        <thead><tr><th>ID</th><th>Procedure</th><th>Side</th><th>Surgery date</th><th>Surgeon</th><th>LOS</th><th>Complications</th><th>Revised</th><th>Follow-up</th><th>Entered by</th></tr></thead>
+        <tbody>
+          ${rows.map(p=>{
+            const hasCompl = (p.intraop.complications||[]).some(c=>c!=='None') || (p.postop.complications||[]).some(c=>c!=='None');
+            const fus = p.followups||[];
+            const worst = fus.some(f=>fuLiveStatus(f)==='overdue') ? 'overdue' : (fus.every(f=>fuLiveStatus(f)==='done') && fus.length ? 'done' : 'due');
+            const revised = p.revision && p.revision.performed;
+            return `<tr class="rowlink" data-id="${p.id}">
+              <td class="idcell">${p.id}</td>
+              <td><span class="tag g${p.procedure.toLowerCase()}">${p.procedure}</span></td>
+              <td>${p.side||'—'}</td>
+              <td class="idcell">${p.surgeryDate||'—'}</td>
+              <td>${p.surgeon||'—'}</td>
+              <td>${p.postop.losDay||'—'}</td>
+              <td><span class="tag ${hasCompl?'hascomp':'none'}">${hasCompl? 'Yes':'None'}</span></td>
+              <td>${revised? `<span class="tag revised">Yes</span>` : '—'}</td>
+              <td><span class="tag ${worst}">${worst==='done'?'Up to date':worst==='overdue'?'Overdue':'Due'}</span></td>
+              <td>${p.enteredBy||'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+    wrap.querySelectorAll('.rowlink').forEach(r=> r.addEventListener('click', ()=> openDetail(r.dataset.id)));
+  }
+}
+function exportCSV(rows){
+  const headers = ['id','mrn','name','age','sex','procedure','side','surgeryDate','surgeon','hospital','previousSurgery',
+    'diagnosis','asa','preopScore','preopHb','preopLLDmm','malalignment',
+    'cupFixation','stemFixation','kneeFixation','constraint','bearing','patellaResurfaced','implantBrand',
+    'intraopComplications','fractureTiming','fractureManagement','operativeTimeMin','tourniquetTimeMin','bloodLossMl',
+    'losDay','postopComplications','postopLLDmm','painScore','revisionPerformed','revisionDate','revisionReason','enteredBy'];
+  const lines = [headers.join(',')];
+  rows.forEach(p=>{
+    const line = [p.id,p.mrn,p.name,p.age,p.sex,p.procedure,p.side,p.surgeryDate,p.surgeon,p.hospital,
+      (p.previousSurgery&&p.previousSurgery.had)?p.previousSurgery.details:'No',
+      p.preop.diagnosis, p.preop.asa, p.preop.preopScore, p.preop.preopHb, p.preop.lldMm,
+      p.preop.malalignmentType? (p.preop.malalignmentType+' '+(p.preop.malalignmentDeg||'')) : '',
+      p.intraop.cupFixation, p.intraop.stemFixation, p.intraop.fixation, p.intraop.constraintType, p.intraop.bearingType, p.intraop.patellaResurfaced, p.intraop.implantBrand,
+      (p.intraop.complications||[]).join('|'), p.intraop.fractureTiming, p.intraop.fractureManagement, p.intraop.operativeTimeMin, p.intraop.tourniquetTimeMin, p.intraop.bloodLossMl,
+      p.postop.losDay, (p.postop.complications||[]).join('|'), p.postop.lldMm, p.postop.painScore,
+      p.revision&&p.revision.performed?'Yes':'No', p.revision?p.revision.date:'', p.revision?p.revision.reason:'', p.enteredBy]
+      .map(v=> `"${String(v??'').replace(/"/g,'""')}"`).join(',');
+    lines.push(line);
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'arthroplasty_cohort.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Exported '+rows.length+' case(s) to CSV');
+}
+
+/* ============================= DETAIL DRAWER ============================= */
+async function openDetail(id){
+  const p = DB.find(x=>x.id===id);
+  if(!p) return;
+  const imgs = await listPatientImages(id);
+  const preopImgs = imgs.filter(i=>i.section==='preop');
+  const postopImgs = imgs.filter(i=>i.section==='postop');
+  const isHip = p.procedure==='THA' || p.procedure==='Hemi';
+  const overlay = document.getElementById('drawerOverlay');
+  const body = document.getElementById('drawerBody');
+  body.innerHTML = `
+    <div class="drawer-head">
+      <div>
+        <h2 style="font-size:17px;">${p.id} — ${p.procedure} (${p.side})</h2>
+        <div style="color:var(--text-soft); font-size:12.5px; margin-top:3px;">${p.name||'Unnamed'} · ${p.age||'?'} yrs · ${p.sex} · Surgery ${p.surgeryDate}</div>
+      </div>
+      <button class="close-x" id="drawerClose">&times;</button>
+    </div>
+
+    <div class="section-title">Case summary</div>
+    <div class="kv" style="margin-bottom:14px;">
+      <div><span>MRN</span>${p.mrn||'—'}</div>
+      <div><span>Surgeon</span>${p.surgeon||'—'}</div>
+      <div><span>Diagnosis</span>${p.preop.diagnosis||'—'}</div>
+      <div><span>ASA grade</span>${p.preop.asa||'—'}</div>
+      <div><span>Previous surgery on joint</span>${(p.previousSurgery&&p.previousSurgery.had)? (p.previousSurgery.details||'Yes'):'No'}</div>
+      <div><span>Approach</span>${p.intraop.approach||'—'}</div>
+      ${isHip ? `<div><span>Cup fixation</span>${p.intraop.cupFixation||'—'}</div><div><span>Stem fixation</span>${p.intraop.stemFixation||'—'}</div>` :
+        `<div><span>Constraint</span>${p.intraop.constraintType||'—'}</div><div><span>Bearing</span>${p.intraop.bearingType||'—'}</div><div><span>Patella resurfaced</span>${p.intraop.patellaResurfaced||'—'}</div>`}
+      <div><span>Operative time</span>${p.intraop.operativeTimeMin||'—'} min</div>
+      <div><span>Blood loss</span>${p.intraop.bloodLossMl||'—'} mL</div>
+      <div><span>Length of stay</span>${p.postop.losDay||'—'} days</div>
+      ${isHip ? `<div><span>Post-op LLD</span>${p.postop.lldMm||'—'} mm (${p.postop.lldMethod||'—'})</div>` : `<div><span>Pre-op malalignment</span>${p.preop.malalignmentType||'—'} ${p.preop.malalignmentDeg||''}</div>`}
+    </div>
+    <div class="grid2" style="margin-bottom:14px;">
+      <div><span style="font-size:11px; color:var(--text-soft);">Intra-op complications</span><br>${(p.intraop.complications||[]).join(', ')||'None recorded'}
+        ${ (p.intraop.complications||[]).includes('Fracture') ? `<div style="font-size:12px; color:var(--text-soft); margin-top:4px;">Fracture: ${p.intraop.fractureTiming||'—'} — ${p.intraop.fractureManagement||'no management noted'}</div>` : ''}
+      </div>
+      <div><span style="font-size:11px; color:var(--text-soft);">Post-op complications</span><br>${(p.postop.complications||[]).join(', ')||'None recorded'}</div>
+    </div>
+    ${p.revision && p.revision.performed ? `
+    <div class="inline-box" style="margin-bottom:14px;"><strong style="color:var(--danger);">Early revision performed</strong><br>
+      Date: ${p.revision.date||'—'} · Reason: ${p.revision.reason||'—'}${p.revision.notes? ' · '+p.revision.notes:''}
+    </div>` : ''}
+
+    <div class="section-title">Imaging</div>
+    <div class="subhead">Pre-operative</div>
+    <div class="img-grid" id="drawer_preop_imgs">${preopImgs.map(im=>`<div class="img-thumb"><img src="${im.dataUrl}" data-src="${im.dataUrl}"></div>`).join('') || '<span style="color:var(--text-soft); font-size:12.5px;">No pre-op images uploaded</span>'}</div>
+    <div class="subhead">Post-operative</div>
+    <div class="img-grid" id="drawer_postop_imgs">${postopImgs.map(im=>`<div class="img-thumb"><img src="${im.dataUrl}" data-src="${im.dataUrl}"></div>`).join('') || '<span style="color:var(--text-soft); font-size:12.5px;">No post-op images uploaded</span>'}</div>
+
+    <div class="section-title" style="margin-top:18px;">Follow-up schedule</div>
+    <div id="fuList"></div>
+
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button class="btn primary small" id="editCaseBtn">Edit full case</button>
+      ${currentUser.role==='admin' ? '<button class="btn danger small" id="deleteCaseBtn">Delete case</button>' : ''}
+    </div>
+  `;
+  body.querySelectorAll('.img-thumb img').forEach(img=> img.addEventListener('click', ()=> openLightbox(img.dataset.src)));
+  drawFu();
+  overlay.classList.add('on');
+  document.getElementById('drawerClose').addEventListener('click', ()=> overlay.classList.remove('on'));
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('on'); });
+  document.getElementById('editCaseBtn').addEventListener('click', ()=>{ overlay.classList.remove('on'); renderEntry(p); document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.view==='entry')); document.getElementById('topTitle').textContent='New entry'; });
+  if(currentUser.role==='admin'){
+    document.getElementById('deleteCaseBtn').addEventListener('click', async ()=>{
+      if(!confirm('Delete case '+p.id+'? This cannot be undone.')) return;
+      DB = DB.filter(x=>x.id!==p.id);
+      await deletePatientRecord(p.id); await logActivity('deleted', p.id);
+      overlay.classList.remove('on'); renderRecords(); toast('Case '+p.id+' deleted');
+    });
+  }
+
+  function drawFu(){
+    const wrap = document.getElementById('fuList');
+    wrap.innerHTML = (p.followups||[]).map((f,i)=>{
+      const st = fuLiveStatus(f);
+      return `<div class="fu-row">
+        <div class="fu-head"><div><strong>${f.label}</strong> <span style="color:var(--text-soft); font-size:12px;">due ${f.dueDate}</span></div><span class="tag ${st}">${st==='done'?'Completed':st==='overdue'?'Overdue':'Due'}</span></div>
+        ${f.status==='completed' ? `
+          <div style="font-size:12.5px; color:var(--text-soft);">Seen ${f.visitDate} · ${followupScoreLabel(p.procedure)}: ${f.score||'—'}${isHip? ' · LLD '+(f.lldMm||'—')+' mm':''} · ${(f.complications||[]).join(', ')||'No complications'}${f.notes? ' · '+f.notes:''}</div>
+        ` : `
+          <div class="grid3" style="margin-top:8px;">
+            <div class="field"><label>Visit date</label><input type="date" id="fu_date_${i}" value="${todayStr()}"></div>
+            <div class="field"><label>${followupScoreLabel(p.procedure)}</label><input type="number" id="fu_score_${i}"></div>
+            ${isHip? `<div class="field"><label>LLD at follow-up (mm)</label><input type="number" id="fu_lld_${i}"></div>` : `<div class="field"><label>Notes</label><input type="text" id="fu_notes_${i}"></div>`}
+          </div>
+          ${isHip? `<div class="field"><label>Notes</label><input type="text" id="fu_notes_${i}"></div>` : ''}
+          <div class="checks" style="margin:8px 0;" id="fu_compl_${i}">${chipsHtml('fu_compl_'+i, POSTOP_COMPL, [])}</div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn small primary" data-idx="${i}" data-action="complete">Mark visit complete</button>
+            <button class="btn small ghost" data-idx="${i}" data-action="lost">Mark lost to follow-up</button>
+          </div>
+        `}
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('.chip').forEach(c=>{
+      c.addEventListener('click', ()=>{
+        if(c.dataset.val==='None'){ c.parentElement.querySelectorAll('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on'); }
+        else { c.classList.toggle('on'); const none=c.parentElement.querySelector('.chip[data-val="None"]'); if(none) none.classList.remove('on'); }
+      });
+    });
+    wrap.querySelectorAll('[data-action]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const i = parseInt(btn.dataset.idx,10);
+        const f = p.followups[i];
+        if(btn.dataset.action==='complete'){
+          f.status='completed';
+          f.visitDate = document.getElementById('fu_date_'+i).value || todayStr();
+          f.score = document.getElementById('fu_score_'+i).value;
+          f.notes = document.getElementById('fu_notes_'+i).value;
+          if(isHip) f.lldMm = document.getElementById('fu_lld_'+i).value;
+          f.complications = Array.from(document.querySelectorAll(`#fu_compl_${i} .chip.on`)).map(c=>c.dataset.val);
+        } else { f.status='lost'; }
+        await savePatientRecord(p);
+        await logActivity('followup:'+btn.dataset.action, p.id);
+        drawFu(); toast('Follow-up updated');
+      });
+    });
+  }
+}
+
+/* ============================= ANALYTICS ============================= */
+let chartRefs = [];
+function destroyCharts(){ chartRefs.forEach(c=>c.destroy()); chartRefs=[]; }
+function renderAnalytics(){
+  destroyCharts();
+  const view = document.getElementById('view');
+  const total = DB.length;
+  const byProc = {THA:0, TKA:0, Hemi:0};
+  DB.forEach(p=> byProc[p.procedure] = (byProc[p.procedure]||0)+1);
+  const complCount = DB.filter(p=> (p.intraop.complications||[]).some(c=>c!=='None') || (p.postop.complications||[]).some(c=>c!=='None')).length;
+  const revisedCount = DB.filter(p=> p.revision && p.revision.performed).length;
+  const losVals = DB.map(p=>parseFloat(p.postop.losDay)).filter(v=>!isNaN(v));
+  const avgLos = losVals.length ? (losVals.reduce((a,b)=>a+b,0)/losVals.length).toFixed(1) : '—';
+  let dueTotal=0, dueDone=0, dueOverdue=0;
+  DB.forEach(p=> (p.followups||[]).forEach(f=>{ dueTotal++; const st=fuLiveStatus(f); if(st==='done') dueDone++; if(st==='overdue') dueOverdue++; }));
+
+  view.innerHTML = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total cases recorded</div></div>
+      <div class="stat-card"><div class="stat-num">${total? Math.round(complCount/total*100):0}%</div><div class="stat-label">Cases with any complication</div></div>
+      <div class="stat-card"><div class="stat-num">${revisedCount}</div><div class="stat-label">Early revisions</div></div>
+      <div class="stat-card"><div class="stat-num">${avgLos}</div><div class="stat-label">Average length of stay (days)</div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-box"><h4>Cases by procedure</h4><canvas id="chartProc"></canvas></div>
+      <div class="chart-box"><h4>Monthly case volume</h4><canvas id="chartVolume"></canvas></div>
+      <div class="chart-box"><h4>Average length of stay by procedure</h4><canvas id="chartLos"></canvas></div>
+      <div class="chart-box"><h4>Follow-up compliance</h4><canvas id="chartFu"></canvas></div>
+    </div>
+  `;
+  if(total===0){ view.innerHTML = `<div class="panel"><div class="empty"><h3>No cases recorded yet</h3>Analytics appear once cases are entered.</div></div>`; return; }
+
+  chartRefs.push(new Chart(document.getElementById('chartProc'), {
+    type:'doughnut', data:{labels:['THA','TKA','Hemiarthroplasty'], datasets:[{data:[byProc.THA,byProc.TKA,byProc.Hemi], backgroundColor:['#2B5A88','#2F7A45','#7A3F8C']}]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:11,font:{size:11}}}}}
+  }));
+  const monthMap = {};
+  DB.forEach(p=>{ if(p.surgeryDate){ const m=p.surgeryDate.slice(0,7); monthMap[m]=(monthMap[m]||0)+1; }});
+  const months = Object.keys(monthMap).sort();
+  chartRefs.push(new Chart(document.getElementById('chartVolume'), {
+    type:'line', data:{labels:months, datasets:[{label:'Cases', data:months.map(m=>monthMap[m]), borderColor:'#1C6B6B', backgroundColor:'rgba(28,107,107,0.1)', fill:true, tension:0.25}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{precision:0}}}}
+  }));
+  const losByProc = {THA:[], TKA:[], Hemi:[]};
+  DB.forEach(p=>{ const v=parseFloat(p.postop.losDay); if(!isNaN(v)) losByProc[p.procedure].push(v); });
+  const avg = arr=> arr.length? (arr.reduce((a,b)=>a+b,0)/arr.length) : 0;
+  chartRefs.push(new Chart(document.getElementById('chartLos'), {
+    type:'bar', data:{labels:['THA','TKA','Hemiarthroplasty'], datasets:[{label:'Avg LOS (days)', data:[avg(losByProc.THA),avg(losByProc.TKA),avg(losByProc.Hemi)], backgroundColor:['#2B5A88','#2F7A45','#7A3F8C']}]},
+    options:{plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+  }));
+  chartRefs.push(new Chart(document.getElementById('chartFu'), {
+    type:'doughnut', data:{labels:['Completed','Overdue','Due / scheduled'], datasets:[{data:[dueDone, dueOverdue, dueTotal-dueDone-dueOverdue], backgroundColor:['#2F7A55','#A6402F','#B8863E']}]},
+    options:{plugins:{legend:{position:'bottom', labels:{boxWidth:11,font:{size:11}}}}}
+  }));
+}
+
+/* ============================= ADMIN ============================= */
+function renderAdmin(){
+  const view = document.getElementById('view');
+  const byUser = {};
+  DB.forEach(p=>{ const u=p.enteredBy||'Unknown'; byUser[u]=byUser[u]||{count:0,last:''}; byUser[u].count++; if(p.enteredAt>byUser[u].last) byUser[u].last=p.enteredAt; });
+  const overdueList = [];
+  DB.forEach(p=> (p.followups||[]).forEach(f=>{ if(fuLiveStatus(f)==='overdue') overdueList.push({p,f}); }));
+  overdueList.sort((a,b)=> a.f.dueDate.localeCompare(b.f.dueDate));
+  const revisedList = DB.filter(p=> p.revision && p.revision.performed);
+
+  view.innerHTML = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-num">${DB.length}</div><div class="stat-label">Total cases in registry</div></div>
+      <div class="stat-card"><div class="stat-num">${Object.keys(byUser).length}</div><div class="stat-label">Contributing data-entry staff</div></div>
+      <div class="stat-card"><div class="stat-num">${overdueList.length}</div><div class="stat-label">Overdue follow-up visits</div></div>
+      <div class="stat-card"><div class="stat-num">${revisedList.length}</div><div class="stat-label">Early revisions logged</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Data-entry progress by staff member</div>
+      <table><thead><tr><th>Staff member</th><th>Cases entered</th><th>Last entry</th></tr></thead>
+        <tbody>${Object.entries(byUser).sort((a,b)=>b[1].count-a[1].count).map(([u,d])=>`<tr><td>${u}</td><td class="idcell">${d.count}</td><td class="idcell">${d.last? new Date(d.last).toLocaleString():'—'}</td></tr>`).join('') || '<tr><td colspan="3" style="color:var(--text-soft);">No entries yet</td></tr>'}</tbody>
+      </table>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Overdue follow-ups requiring outreach</div>
+      ${overdueList.length===0 ? '<div class="empty"><h3>No overdue follow-ups</h3>Every scheduled visit is either completed or still upcoming.</div>' : `
+      <table><thead><tr><th>Case</th><th>Patient</th><th>Interval</th><th>Was due</th><th>Surgeon</th><th></th></tr></thead>
+        <tbody>${overdueList.map(({p,f})=>`<tr><td class="idcell">${p.id}</td><td>${p.name||'—'}</td><td>${f.label}</td><td class="idcell">${f.dueDate}</td><td>${p.surgeon||'—'}</td><td><button class="btn small" data-open="${p.id}">Open case</button></td></tr>`).join('')}</tbody>
+      </table>`}
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Early revisions</div>
+      ${revisedList.length===0 ? '<div class="empty"><h3>No revisions logged</h3></div>' : `
+      <table><thead><tr><th>Case</th><th>Procedure</th><th>Surgery date</th><th>Revision date</th><th>Reason</th><th></th></tr></thead>
+        <tbody>${revisedList.map(p=>`<tr><td class="idcell">${p.id}</td><td>${p.procedure}</td><td class="idcell">${p.surgeryDate}</td><td class="idcell">${p.revision.date||'—'}</td><td>${p.revision.reason||'—'}</td><td><button class="btn small" data-open="${p.id}">Open case</button></td></tr>`).join('')}</tbody>
+      </table>`}
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Recent activity</div>
+      <table><thead><tr><th>When</th><th>Staff member</th><th>Action</th><th>Case</th></tr></thead>
+        <tbody>${ACTIVITY.slice().reverse().slice(0,25).map(a=>`<tr><td class="idcell">${new Date(a.at).toLocaleString()}</td><td>${a.user}</td><td>${a.action}</td><td class="idcell">${a.patientId||'—'}</td></tr>`).join('') || '<tr><td colspan="4" style="color:var(--text-soft);">No activity logged yet</td></tr>'}</tbody>
+      </table>
+    </div>
+  `;
+  view.querySelectorAll('[data-open]').forEach(b=> b.addEventListener('click', ()=> openDetail(b.dataset.open)));
+}
+</script>
+</body>
+</html>

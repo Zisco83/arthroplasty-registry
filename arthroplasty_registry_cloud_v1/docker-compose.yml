@@ -1,0 +1,22 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: registry
+      POSTGRES_PASSWORD: change-me
+      POSTGRES_DB: arthroplasty_registry
+    ports: ["5432:5432"]
+    volumes: ["registry_pgdata:/var/lib/postgresql/data"]
+  app:
+    build: .
+    depends_on: [db]
+    ports: ["8000:8000"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://registry:change-me@db:5432/arthroplasty_registry
+      SECRET_KEY: change-this-to-a-long-random-secret
+      BOOTSTRAP_ADMIN_USERNAME: admin
+      BOOTSTRAP_ADMIN_PASSWORD: change-me-now
+      BOOTSTRAP_ADMIN_NAME: Registry Administrator
+      COOKIE_SECURE: "false"
+volumes:
+  registry_pgdata:
