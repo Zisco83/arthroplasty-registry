@@ -252,19 +252,51 @@ window.storage = {
     if(prefix==='img:') { return {keys:[]}; }
     return {keys:[]};
   },
-  async get(key, _shared){
-    if(key==='activity_log'){ const r=await fetch('/api/activity'); if(!r.ok) return null; return {value:JSON.stringify(await r.json())}; }
-    if(key.startsWith('patient:')) { const id=key.slice(8); const r=await fetch('/api/records/'+encodeURIComponent(id)); if(!r.ok) return null; return {value:JSON.stringify(await r.json())}; }
-    if(key.startsWith('img:')) { const r=await fetch('/api/images/'+encodeURIComponent(key)); if(!r.ok) return null; const blob=await r.blob(); return {value:await blobToDataUrl(blob)}; }
-    return null;
-  },
-  async set(key, value, _shared){
+async set(key, value, _shared){
     if(key==='activity_log') return;
+
     if(key.startsWith('patient:')){
-      const id=key.slice(8); const rec=JSON.parse(value);
-      const method=rec.id===id ? 'PUT':'POST'; const url=method==='PUT'?'/api/records/'+encodeURIComponent(id):'/api/records';
-      const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({id,record:rec})});
-      if(!r.ok) throw new Error(await r.text()); return;
+      const id = key.slice(8);
+      const rec = JSON.parse(value);
+
+      /*
+       * Determine whether this is a new record or an existing record.
+       * A newly generated registry ID does NOT mean that the record
+       * already exists in PostgreSQL.
+       */
+
+      const existing = await fetch(
+        '/api/records/' + encodeURIComponent(id),
+        {method:'GET'}
+      );
+
+      const method = existing.ok ? 'PUT' : 'POST';
+
+      const url = method === 'PUT'
+        ? '/api/records/' + encodeURIComponent(id)
+        : '/api/records';
+
+      const r = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id,
+          record: rec
+        })
+      });
+
+      if(!r.ok){
+        throw new Error(
+          'Registry save failed (' +
+          r.status +
+          '): ' +
+          await r.text()
+        );
+      }
+
+      return;
     }
   },
   async delete(key, _shared){
