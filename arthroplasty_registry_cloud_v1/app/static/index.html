@@ -164,7 +164,7 @@
       </div>
       
       <button class="btn-primary" id="loginBtn">Enter registry</button>
-      <div class="login-note">Records and radiographs are stored in the browser (localStorage) or the host environment storage. Access is authenticated and registry data is stored in the cloud database. This deployment still requires institutional governance, privacy review, backups, and appropriate clinical data protection before real patient-identifiable use. Only enter data your institution has approved for this tool. Support: samsonriders@yahoo.com · oyagbesanolusegun@gmail.com</div>
+      <div class="login-note">Records and radiographs are stored in the authenticated cloud database. This deployment still requires institutional governance, privacy review, backups, and appropriate clinical data protection before real patient-identifiable use. Only enter data your institution has approved for this tool.</div>
     </div>
   </div>
 
@@ -252,50 +252,56 @@ window.storage = {
     if(prefix==='img:') { return {keys:[]}; }
     return {keys:[]};
   },
-async set(key, value, _shared){
+  async get(key, _shared){
+    if(key==='activity_log'){
+      const r = await fetch('/api/activity');
+      if(!r.ok) return null;
+      return {value:JSON.stringify(await r.json())};
+    }
+    if(key.startsWith('patient:')){
+      const id = key.slice(8);
+      const r = await fetch('/api/records/' + encodeURIComponent(id));
+      if(!r.ok) return null;
+      return {value:JSON.stringify(await r.json())};
+    }
+    if(key.startsWith('img:')){
+      const r = await fetch('/api/images/' + encodeURIComponent(key));
+      if(!r.ok) return null;
+      const blob = await r.blob();
+      return {value:await blobToDataUrl(blob)};
+    }
+    return null;
+  },
+  async set(key, value, _shared){
     if(key==='activity_log') return;
 
     if(key.startsWith('patient:')){
       const id = key.slice(8);
       const rec = JSON.parse(value);
 
-      /*
-       * Determine whether this is a new record or an existing record.
-       * A newly generated registry ID does NOT mean that the record
-       * already exists in PostgreSQL.
-       */
-
-      const existing = await fetch(
-        '/api/records/' + encodeURIComponent(id),
-        {method:'GET'}
-      );
-
+      // A generated registry ID does not prove that the record already exists.
+      const existing = await fetch('/api/records/' + encodeURIComponent(id), {method:'GET'});
       const method = existing.ok ? 'PUT' : 'POST';
-
       const url = method === 'PUT'
         ? '/api/records/' + encodeURIComponent(id)
         : '/api/records';
 
       const r = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          id,
-          record: rec
-        })
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id, record:rec})
       });
 
       if(!r.ok){
-        throw new Error(
-          'Registry save failed (' +
-          r.status +
-          '): ' +
-          await r.text()
-        );
+        let detail = '';
+        try {
+          const body = await r.json();
+          detail = body.detail || JSON.stringify(body);
+        } catch(_) {
+          detail = await r.text();
+        }
+        throw new Error('Registry save failed (' + r.status + '): ' + detail);
       }
-
       return;
     }
   },
@@ -389,7 +395,6 @@ document.querySelectorAll('.role-btn').forEach(b=>{
   b.addEventListener('click', ()=>{
     document.querySelectorAll('.role-btn').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
-    document.getElementById('adminCodeField').style.display = b.dataset.role==='admin' ? 'block':'none';
   });
 });
 document.getElementById('loginBtn').addEventListener('click', async ()=>{
@@ -621,33 +626,51 @@ async function renderEntry(editRecord, keepPending){
   document.getElementById('upload_postop').addEventListener('change', (e)=> handleUpload(e, 'postop', r));
 
   document.getElementById('saveEntryBtn').addEventListener('click', async ()=>{
+    const btn = document.getElementById('saveEntryBtn');
     const rec = collectEntry();
     if(!rec.surgeryDate || !rec.procedure){ toast('Date of surgery and procedure are required'); return; }
-    if(!editRecord){
-      rec.id = nextId();
-      rec.enteredBy = currentUser.name;
-      rec.enteredAt = new Date().toISOString();
-      rec.followups = buildFollowups(rec.surgeryDate);
-      DB.push(rec);
-      for(const im of pendingImages.preop) await storeImage(rec.id, 'preop', im.dataUrl);
-      for(const im of pendingImages.postop) await storeImage(rec.id, 'postop', im.dataUrl);
-      pendingImages = {preop:[], postop:[]};
-      await savePatientRecord(rec);
-      await logActivity('created', rec.id);
-      toast('Case '+rec.id+' saved');
-      renderEntry();
-    } else {
-      const idx = DB.findIndex(p=>p.id===editRecord.id);
-      rec.id = editRecord.id; rec.enteredBy = editRecord.enteredBy; rec.enteredAt = editRecord.enteredAt;
-      rec.followups = editRecord.followups;
-      for(const im of pendingImages.preop) await storeImage(rec.id, 'preop', im.dataUrl);
-      for(const im of pendingImages.postop) await storeImage(rec.id, 'postop', im.dataUrl);
-      pendingImages = {preop:[], postop:[]};
-      DB[idx] = rec;
-      await savePatientRecord(rec);
-      await logActivity('edited', rec.id);
-      toast('Case '+rec.id+' updated');
-      goView('records');
+
+    btn.disabled = true;
+    btn.textContent = editRecord ? 'Saving changes…' : 'Saving case…';
+
+    try{
+      if(!editRecord){
+        rec.id = nextId();
+        rec.enteredBy = currentUser.name;
+        rec.enteredAt = new Date().toISOString();
+        rec.followups = buildFollowups(rec.surgeryDate);
+
+        await savePatientRecord(rec);
+        DB.push(rec);
+        for(const im of pendingImages.preop) await storeImage(rec.id, 'preop', im.dataUrl);
+        for(const im of pendingImages.postop) await storeImage(rec.id, 'postop', im.dataUrl);
+        pendingImages = {preop:[], postop:[]};
+        await logActivity('created', rec.id);
+        toast('Case '+rec.id+' saved');
+        await renderEntry();
+      } else {
+        const idx = DB.findIndex(p=>p.id===editRecord.id);
+        rec.id = editRecord.id;
+        rec.enteredBy = editRecord.enteredBy;
+        rec.enteredAt = editRecord.enteredAt;
+        rec.followups = editRecord.followups;
+
+        await savePatientRecord(rec);
+        if(idx >= 0) DB[idx] = rec;
+        for(const im of pendingImages.preop) await storeImage(rec.id, 'preop', im.dataUrl);
+        for(const im of pendingImages.postop) await storeImage(rec.id, 'postop', im.dataUrl);
+        pendingImages = {preop:[], postop:[]};
+        await logActivity('edited', rec.id);
+        toast('Case '+rec.id+' updated');
+        await goView('records');
+      }
+    }catch(err){
+      console.error('Registry save error:', err);
+      const message = err && err.message ? err.message : String(err);
+      toast(message.length > 220 ? message.slice(0,217)+'…' : message);
+    }finally{
+      const currentBtn = document.getElementById('saveEntryBtn');
+      if(currentBtn){ currentBtn.disabled = false; currentBtn.textContent = editRecord ? 'Save changes' : 'Save case'; }
     }
   });
   if(editRecord) document.getElementById('cancelEditBtn').addEventListener('click', ()=> goView('records'));
@@ -960,9 +983,14 @@ async function openDetail(id){
           if(isHip) f.lldMm = document.getElementById('fu_lld_'+i).value;
           f.complications = Array.from(document.querySelectorAll(`#fu_compl_${i} .chip.on`)).map(c=>c.dataset.val);
         } else { f.status='lost'; }
-        await savePatientRecord(p);
-        await logActivity('followup:'+btn.dataset.action, p.id);
-        drawFu(); toast('Follow-up updated');
+        try{
+          await savePatientRecord(p);
+          await logActivity('followup:'+btn.dataset.action, p.id);
+          drawFu(); toast('Follow-up updated');
+        }catch(err){
+          console.error('Follow-up save error:', err);
+          toast(err && err.message ? err.message : 'Follow-up save failed');
+        }
       });
     });
   }
